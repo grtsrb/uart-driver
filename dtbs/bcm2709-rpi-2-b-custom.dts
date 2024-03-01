@@ -1,0 +1,28 @@
+/dts-v1/;
+
+#include "bcm2709.dtsi"
+#include "bcm2709-rpi.dtsi"
+#include "bcm283x-rpi-smsc9514.dtsi"
+#include "bcm283x-rpi-csi1-2lane.dtsi"
+#include "bcm283x-rpi-i2c0mux_0_28.dtsi"
+
+/ {
+	compatible = "raspberrypi,2-model-b", "brcm,bcm2836";
+	model = "Raspberry Pi 2 Model B";
+};
+
+&gpio {
+    uart0_pins: uart0_pins {
+        brcm,pins = <14 15>;
+        brcm,function = <4>;
+    };
+};
+&uart0 {
+
+    my_uart: my_uart@0x7E20100{
+        compatible = "rtrk,serial";
+        reg = <0x7E20100 0x90>; 
+    };
+
+};
+
