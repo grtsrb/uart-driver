@@ -6,7 +6,7 @@
 #include <linux/miscdevice.h>
 #include <linux/resource.h>
 #include <linux/pm_runtime.h>
-
+#include <asm/io.h>
 
 // Driver structure
 struct uart_dev {
@@ -18,6 +18,18 @@ struct uart_dev {
 
 
 };
+
+static unsigned reg_read(struct uart_dev *dev, int offset)
+{
+    return readl(dev->regs + offset);
+}
+
+static void reg_write(struct uart_dev *dev, int value, int offset)
+{
+    writel(value, dev->regs + offset);
+}
+
+
 
 
 static int feserial_probe(struct platform_device *pdev)
