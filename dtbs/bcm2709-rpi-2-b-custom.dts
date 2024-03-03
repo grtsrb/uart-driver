@@ -8,6 +8,7 @@
 
 / {
 	compatible = "raspberrypi,2-model-b", "brcm,bcm2836";
+    // Proveri sa asistentom!
 	model = "Raspberry Pi 2 Model B";
 };
 
@@ -21,8 +22,16 @@
 
     my_uart: my_uart@0x7E20100{
         compatible = "rtrk,serial";
-        reg = <0x7E20100 0x90>; 
+        reg = <0x7E20100 0x90>;
+        clocks = <&uart_clock>;
+        status = "okay";
     };
 
 };
-
+&clocks {
+    uart_clock: uart_clock {
+        compatible = "fixed-clock";
+        clock-frequency = <1000000>;
+        #clock-cells = <0>;
+    };
+};
