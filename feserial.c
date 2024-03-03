@@ -12,10 +12,14 @@
 #include <linux/amba/bus.h>
 #include <linux/amba/serial.h>
 
+
+#define BAUDRATE 115200
+
 // Driver structure
 struct uart_dev {
     void __iomem *regs;
     struct miscdevice miscdev;
+    unsigned long uartclk;
     // TO DO
 
 
@@ -42,6 +46,7 @@ static int feserial_probe(struct platform_device *pdev)
     struct uart_dev *dev;
     struct resource *res;
     struct clk *uart_clk;
+    unsigned int baud_divisor;
     int ret;
 
     // Allocate memory
@@ -73,7 +78,7 @@ static int feserial_probe(struct platform_device *pdev)
     pm_runtime_get_sync(&pdev->dev);
 
     // Get frequency from device tree
-    uart_clk = devm_clk_get(&pdev->dev, NULL);
+    uart_clk = devm_clk_get(&pdev->dev, "uart_clock");
 
     if (!uart_clk) {
         dev_err(&pdev->dev, "Could not get uart0 clock.\n");
@@ -85,8 +90,30 @@ static int feserial_probe(struct platform_device *pdev)
         dev_err(&pdev->dev, "Unable to enable uart0 clock!\n");
         return ret;
     }
+    // Get frequency
+    dev->uartclk = clk_get_rate(uart_clk);
+    
+    // Turn off the device TODO CHECK!
+    reg_write(dev, 0, UART01x_CR_UARTEN);
 
+    // Calculate baud_divisor
 
+    baud_divisor = dev->uartclk / (16 * BAUDRATE);
+
+    // Write integer value
+    reg_write(dev, (baud_divisor >> 6), UART011_IBRD);
+
+    // Write fraction value
+    reg_write(dev, (baud_divisor & 0x3F), UART011_FBRD);
+
+    // Enable UART011
+    reg_write(dev, 1, UART01x_CR_UARTEN);
+
+    // Enable RX
+    reg_write(dev, 1, UART011_CR_RXE);
+
+    // Enable TX
+    reg_write(dev, 1, UART011_CR_RXE);
 	return 0;
 }
 
