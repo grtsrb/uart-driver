@@ -34,7 +34,17 @@ static void reg_write(struct uart_dev *dev, int value, int offset)
 //TODO feserial_write
 static ssize_t feserial_write(struct file *file, const char __user *buf, size_t sz, loff_t *ppos)
 {
-    return 0;
+    struct uart_dev *dev;
+    dev = container_of(file->private_data, struct uart_dev, miscdev);
+    int i;
+    for (i = 0; i < sz; i++)
+    {
+        if (copy_from_user(buf + i, )) return -EFAULT;
+
+    }
+
+
+    return -EINVAL;
 }
 
 //TODO feserial_read
@@ -43,6 +53,11 @@ static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, lof
     return -EINVAL;
 }
 
+// ioctl function
+
+static long feserial_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
+    return -EINVAL;
+}
 static const struct file_operations feserial_fops = {
     .owner = THIS_MODULE,
     .write = feserial_write,
