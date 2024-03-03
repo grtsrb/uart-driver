@@ -7,6 +7,7 @@
 #include <linux/resource.h>
 #include <linux/pm_runtime.h>
 #include <asm/io.h>
+#include <linux/fs.h>
 
 // Driver structure
 struct uart_dev {
@@ -31,18 +32,18 @@ static void reg_write(struct uart_dev *dev, int value, int offset)
 
 
 //TODO feserial_write
-static ssize_t feserial_write(struct *file, const char __user *buf, size_t sz, loff_t *ppos)
+static ssize_t feserial_write(struct file *file, const char __user *buf, size_t sz, loff_t *ppos)
 {
     return 0;
 }
 
 //TODO feserial_read
-static ssize_t feserial_read(struct file *file, const char __user *buf, size_t sz, loff_t *ppos)
+static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, loff_t *ppos)
 {
-    return 0;
+    return -EINVAL;
 }
 
-static const file_operations feserial_fops = {
+static const struct file_operations feserial_fops = {
     .owner = THIS_MODULE,
     .write = feserial_write,
     .read = feserial_read,
@@ -106,22 +107,22 @@ static int feserial_remove(struct platform_device *pdev)
     dev = platform_get_drvdata(pdev);
 
     // Unregister Misc device!
-    misc_deregister(dev->miscdev);
+    misc_deregister(&dev->miscdev);
     // Disable Power Management!
     pm_runtime_disable(&pdev->dev);
     return 0;
 }
 
 static struct of_device_id feserial_dt_match[] = {
-        {.compatible = "rtrk,serial"},
-        {],
+        { .compatible = "rtrk,serial" },
+        { },
 };
 
 static struct platform_driver feserial_driver = {
         .driver = {
                 .name = "feserial",
                 .owner = THIS_MODULE,
-                .of_match_table = of_match_ptr(feserial_dt_match);
+                .of_match_table = of_match_ptr(feserial_dt_match),
         },
         .probe = feserial_probe,
         .remove = feserial_remove,
