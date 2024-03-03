@@ -113,7 +113,7 @@ static int feserial_probe(struct platform_device *pdev)
     reg_write(dev, 1, UART011_CR_RXE);
 
     // Enable TX
-    reg_write(dev, 1, UART011_CR_RXE);
+    reg_write(dev, 1, UART011_CR_TXE);
 	return 0;
 }
 
