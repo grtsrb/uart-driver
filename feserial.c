@@ -30,6 +30,11 @@ static void reg_write(struct uart_dev *dev, int value, int offset)
     writel(value, dev->regs + offset);
 }
 
+static void feserial_write_one_char(struct uart_dev *dev, char c){
+    while ((reg_read(dev, UART01x_FR) & UART011_FR_TXFE) != 0) cpu_relax();
+
+    reg_write(dev, c, UART01x_DR);
+}
 
 //TODO feserial_write
 static ssize_t feserial_write(struct file *file, const char __user *buf, size_t sz, loff_t *ppos)
@@ -63,7 +68,6 @@ static const struct file_operations feserial_fops = {
     .write = feserial_write,
     .read = feserial_read,
 };
-
 
 static int feserial_probe(struct platform_device *pdev)
 {
