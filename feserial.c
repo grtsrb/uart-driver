@@ -8,6 +8,9 @@
 #include <linux/pm_runtime.h>
 #include <asm/io.h>
 #include <linux/fs.h>
+// Offset values defined in -> bus.h and serial.h
+#include <linux/amba/bus.h>
+#include <linux/amba/serial.h>
 
 // Driver structure
 struct uart_dev {
@@ -40,15 +43,20 @@ static void feserial_write_one_char(struct uart_dev *dev, char c){
 static ssize_t feserial_write(struct file *file, const char __user *buf, size_t sz, loff_t *ppos)
 {
     struct uart_dev *dev;
-    dev = container_of(file->private_data, struct uart_dev, miscdev);
+    unsigned char user_data[sz];
     int i;
+    dev = container_of(file->private_data, struct uart_dev, miscdev);
+
+    // Copy buffer from user_space to user_data
+
+    if (copy_from_user(user_data, buf, sz)) return -EFAULT; 
+    // Write data, check if it is \n
     for (i = 0; i < sz; i++)
     {
-        if (copy_from_user(buf + i, )) return -EFAULT;
+        feserial_write_one_char(dev, user_data[i]);
+        if (user_data[i] == '\n') feserial_write_one_char(dev, '\r');
 
     }
-
-
     return -EINVAL;
 }
 
