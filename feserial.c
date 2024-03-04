@@ -17,11 +17,10 @@ struct uart_dev {
     void __iomem *regs;
     struct miscdevice miscdev;
     // TO DO
-
-
-
-
+    int char_counter;
 };
+
+enum feserial_state{SERIAL_RESET_COUNTER = 0, SERIAL_GET_COUNTER = 1};
 
 static unsigned reg_read(struct uart_dev *dev, int offset)
 {
@@ -37,6 +36,8 @@ static void feserial_write_one_char(struct uart_dev *dev, char c){
     while ((reg_read(dev, UART01x_FR) & UART011_FR_TXFE) != 0) cpu_relax();
 
     reg_write(dev, c, UART01x_DR);
+
+    dev->char_counter++;
 }
 
 //TODO feserial_write
@@ -69,7 +70,24 @@ static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, lof
 // ioctl function
 
 static long feserial_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
-    return -EINVAL;
+    struct uart_dev *dev;
+    dev = container_of(filp->private_data, struct uart_dev, miscdev);
+    void __user *argp = (void __user*) arg;
+
+    switch (cmd) {
+        case SERIAL_RESET_COUNTER:
+            dev->char_counter = 0;
+        break;
+        case SERIAL_GET_COUNTER:
+            if(copy_to_user(argp, &dev->char_counter, sizeof(int))) return -EFAULT;
+        break;
+
+        default:
+            return -EFAULT;
+    
+    }
+
+    return 0;
 }
 static const struct file_operations feserial_fops = {
     .owner = THIS_MODULE,
@@ -102,6 +120,8 @@ static int feserial_probe(struct platform_device *pdev)
     if (!dev->regs) {
         dev_err(&pdev->dev, "Can not remap registers!\n");
     };
+
+    dev->char_counter = 0;
 
     // Set power management
     pm_runtime_enable(&pdev->dev);
