@@ -22,7 +22,7 @@
 
     my_uart: my_uart{
         compatible = "rtrk,serial";
-        reg = <0x7E20100 0x90>;
+        reg = <0x7E201000 0x90>;
         status = "okay";
 	pinctrl-0 = <&uart0_pins>;
 	pinctrl-names = "default";
