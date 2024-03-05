@@ -21,7 +21,9 @@
 
     my_uart: my_uart@0x7E20100{
         compatible = "rtrk,serial";
-        reg = <0x7E20100 0x90>; 
+        reg = <0x7E20100 0x90>;
+        gpio = <14 15>;
+        status = "okay";
     };
 
 };
