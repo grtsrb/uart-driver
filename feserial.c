@@ -62,9 +62,9 @@ static int feserial_probe(struct platform_device *pdev)
         dev_err(&pdev->dev, "Can not get base address!\n");
         return -EBUSY;
     };
-
-    // TODO Check if it prints.
-    pr_info("Base address: %pa.\n", res->start);
+    
+    // Print base address
+    dev_info(&pdev->dev, "Base address: %X", res->start);
 
     // Remap resources 
     dev->regs = devm_ioremap_resource(&pdev->dev, res);
@@ -122,11 +122,15 @@ static int feserial_remove(struct platform_device *pdev)
 	pr_info("Called feserial_remove\n");
         return 0;
 }
-
+static struct of_device_id feserial_dt_match[] = {
+    { .compatible = "rtrk,serial" },
+    { },
+};
 static struct platform_driver feserial_driver = {
         .driver = {
-                .name = "rtrk,serial",
+                .name = "feserial",
                 .owner = THIS_MODULE,
+                .of_match_table = of_match_ptr(feserial_dt_match),
         },
         .probe = feserial_probe,
         .remove = feserial_remove,
