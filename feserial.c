@@ -92,7 +92,7 @@ static int feserial_probe(struct platform_device *pdev)
     }
     // Get frequency
     dev->uartclk = clk_get_rate(uart_clk);
-    
+    // GOTTA MASK IT    
     // Turn off the device TODO CHECK!
     reg_write(dev, 0, UART01x_CR_UARTEN);
 
