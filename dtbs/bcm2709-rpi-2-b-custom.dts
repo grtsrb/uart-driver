@@ -15,15 +15,17 @@
     uart0_pins: uart0_pins {
         brcm,pins = <14 15>;
         brcm,function = <4>;
+	brcm,pull = <1 1>;
     };
 };
 &uart0 {
 
-    my_uart: my_uart@0x7E20100{
+    my_uart: my_uart{
         compatible = "rtrk,serial";
         reg = <0x7E20100 0x90>;
-        gpio = <14 15>;
         status = "okay";
+	pinctrl-0 = <&uart0_pins>;
+	pinctrl-names = "default";
     };
 
 };
