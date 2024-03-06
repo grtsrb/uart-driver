@@ -46,7 +46,7 @@ static void reg_write(struct uart_dev *dev, int value, int offset)
 }
 
 static void feserial_write_one_char(struct uart_dev *dev, char c){
-    while ((reg_read(dev, UART01x_FR) & UART011_FR_TXFE) != 0) cpu_relax();
+    while ((reg_read(dev, UART01x_FR) & UART01x_FR_TXFF) != 0) cpu_relax();
 
     reg_write(dev, c, UART01x_DR);
 
@@ -71,7 +71,7 @@ static ssize_t feserial_write(struct file *file, const char __user *buf, size_t 
         if (user_data[i] == '\n') feserial_write_one_char(dev, '\r');
 
     }
-    return -EINVAL;
+    return sz;
 }
 
 //TODO feserial_read
@@ -183,6 +183,7 @@ static int feserial_probe(struct platform_device *pdev)
 
     // Initialize wait_queue
     init_waitqueue_head(&dev->wait_queue);
+    feserial_write_one_char(dev, 'A');
 
     // Set power management
     pm_runtime_enable(&pdev->dev);
