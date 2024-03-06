@@ -135,6 +135,7 @@ static int feserial_probe(struct platform_device *pdev)
     platform_set_drvdata(pdev, dev);
 
     ret = misc_register(&dev->miscdev);
+
     if (ret < 0) {
         // Throw error
         dev_err(&pdev->dev, "Can not register misc device!\n");
