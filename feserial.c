@@ -92,10 +92,11 @@ static int feserial_probe(struct platform_device *pdev)
     }
     // Get frequency
     dev->uartclk = clk_get_rate(uart_clk);
-    // GOTTA MASK IT    
-    // Turn off the device TODO CHECK!
-    reg_write(dev, 0, UART01x_CR_UARTEN);
-
+    
+    // Check if bit is set, if set turn it off.
+    if (reg_read(dev, UART011_CR) & UART01x_CR_UARTEN) {
+        reg_write(dev, reg_read(dev, UART011_CR) & (~UART01x_CR_UARTEN), UART011_CR);
+    }
     // Calculate baud_divisor
 
     baud_divisor = dev->uartclk / (16 * BAUDRATE);
@@ -107,13 +108,13 @@ static int feserial_probe(struct platform_device *pdev)
     reg_write(dev, (baud_divisor & 0x3F), UART011_FBRD);
 
     // Enable UART011
-    reg_write(dev, 1, UART01x_CR_UARTEN);
+    reg_write(dev, reg_read(dev, UART011_CR) | UART01x_CR_UARTEN, UART011_CR);
 
     // Enable RX
-    reg_write(dev, 1, UART011_CR_RXE);
+    reg_write(dev, reg_read(dev, UART011_CR) | UART011_CR_RXE, UART011_CR);
 
     // Enable TX
-    reg_write(dev, 1, UART011_CR_TXE);
+    reg_write(dev, reg_read(dev, UART011_CR) | UART011_CR_TXE, UART011_CR);
 	return 0;
 }
 
