@@ -58,7 +58,7 @@ static ssize_t feserial_write(struct file *file, const char __user *buf, size_t 
         if (user_data[i] == '\n') feserial_write_one_char(dev, '\r');
 
     }
-    return -EINVAL;
+    return sz;
 }
 
 //TODO feserial_read
