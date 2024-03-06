@@ -114,6 +114,9 @@ static int feserial_probe(struct platform_device *pdev)
     if (!res) {
         dev_err(&pdev->dev, "Can not get base address!\n");
     };
+    
+    // Print base address
+    pr_info("Base address: %pa.\n", res->start);
 
     // Remap resources 
     dev->regs = devm_ioremap_resource(&pdev->dev, res);
