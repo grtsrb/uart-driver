@@ -78,7 +78,7 @@ static int feserial_probe(struct platform_device *pdev)
     pm_runtime_get_sync(&pdev->dev);
 
     // Get frequency from device tree
-    uart_clk = devm_clk_get(&pdev->dev, "uart_clock");
+    uart_clk = devm_clk_get(&pdev->dev, NULL);
 
     if (!uart_clk) {
         dev_err(&pdev->dev, "Could not get uart0 clock.\n");
@@ -92,7 +92,7 @@ static int feserial_probe(struct platform_device *pdev)
     }
     // Get frequency
     uartfreq = clk_get_rate(uart_clk);
-    
+    pr_info("Freq: %lx\n", uartfreq); 
     // Check if bit is set, if set turn it off.
     if (reg_read(dev, UART011_CR) & UART01x_CR_UARTEN) {
         reg_write(dev, reg_read(dev, UART011_CR) & (~UART01x_CR_UARTEN), UART011_CR);
@@ -100,7 +100,7 @@ static int feserial_probe(struct platform_device *pdev)
     // Calculate baud_divisor
 
     baud_divisor = uartfreq / (16 * BAUDRATE);
-
+    pr_info("Freq: %lx\n", baud_divisor);
     // Write integer value
     reg_write(dev, (baud_divisor >> 6), UART011_IBRD);
 

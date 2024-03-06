@@ -13,9 +13,9 @@ int main(void)
     unsigned int val;
     int fd, ret;
 
-    fd = open("/dev/serial", O_RDWR);
+    fd = open("/dev/feserial-3f201000", O_RDWR);
     if (fd < 0) {
-        fprintf(stderr, "Unable to open /dev/serial\n");
+        fprintf(stderr, "Unable to open /dev/feserial\n");
         exit (1);
     }
 
