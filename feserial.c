@@ -141,7 +141,7 @@ static int feserial_probe(struct platform_device *pdev)
     pm_runtime_get_sync(&pdev->dev);
 
     // Get frequency from device tree
-    uart_clk = devm_clk_get(&pdev->dev, "uart_clock");
+    uart_clk = devm_clk_get(&pdev->dev, NULL);
 
     if (!uart_clk) {
         dev_err(&pdev->dev, "Could not get uart0 clock.\n");
