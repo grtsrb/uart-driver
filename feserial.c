@@ -33,7 +33,7 @@ static void reg_write(struct uart_dev *dev, int value, int offset)
 }
 
 static void feserial_write_one_char(struct uart_dev *dev, char c){
-    while ((reg_read(dev, UART01x_FR) & UART011_FR_TXFE) != 0) cpu_relax();
+    while ((reg_read(dev, UART01x_FR) & UART01x_FR_TXFF) != 0) cpu_relax();
 
     reg_write(dev, c, UART01x_DR);
 
@@ -125,6 +125,7 @@ static int feserial_probe(struct platform_device *pdev)
     };
 
     dev->char_counter = 0;
+    feserial_write_one_char(dev, 'A');
 
     // Set power management
     pm_runtime_enable(&pdev->dev);
