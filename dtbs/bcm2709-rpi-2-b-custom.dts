@@ -21,17 +21,9 @@
 &uart0 {
 
     compatible = "rtrk,serial";
-    clocks = <&uart_clock>; 
     reg = <0x7E201000 0x90>;
     status = "okay";
     pinctrl-0 = <&uart0_pins>;
     pinctrl-names = "default";
 
-};
-&clocks {
-    uart_clock: uart_clock {
-        compatible = "fixed-clock";
-        clock-frequency = <1000000>;
-        #clock-cells = <0>;
-    };
 };

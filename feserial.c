@@ -19,7 +19,6 @@
 struct uart_dev {
     void __iomem *regs;
     struct miscdevice miscdev;
-    unsigned long uartclk;
     // TO DO
 
 
@@ -46,7 +45,8 @@ static int feserial_probe(struct platform_device *pdev)
     struct uart_dev *dev;
     struct resource *res;
     struct clk *uart_clk;
-    unsigned int baud_divisor;
+    unsigned long baud_divisor;
+    unsigned long uartfreq;
     int ret;
 
     // Allocate memory
@@ -91,7 +91,7 @@ static int feserial_probe(struct platform_device *pdev)
         return ret;
     }
     // Get frequency
-    dev->uartclk = clk_get_rate(uart_clk);
+    uartfreq = clk_get_rate(uart_clk);
     
     // Check if bit is set, if set turn it off.
     if (reg_read(dev, UART011_CR) & UART01x_CR_UARTEN) {
@@ -99,7 +99,7 @@ static int feserial_probe(struct platform_device *pdev)
     }
     // Calculate baud_divisor
 
-    baud_divisor = dev->uartclk / (16 * BAUDRATE);
+    baud_divisor = uartfreq / (16 * BAUDRATE);
 
     // Write integer value
     reg_write(dev, (baud_divisor >> 6), UART011_IBRD);
