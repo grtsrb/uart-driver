@@ -8,9 +8,14 @@
 #include <linux/pm_runtime.h>
 #include <asm/io.h>
 #include <linux/fs.h>
+#include <linux/interrupt.h>
 // Offset values defined in -> bus.h and serial.h
 #include <linux/amba/bus.h>
 #include <linux/amba/serial.h>
+#include <linux/wait.h>
+#include <linux/spinlock.h>
+
+#define BUFFER_SIZE 128
 
 // Driver structure
 struct uart_dev {
@@ -18,6 +23,14 @@ struct uart_dev {
     struct miscdevice miscdev;
     // TO DO
     int char_counter;
+    int irq;
+    wait_queue_head_t wait_queue;
+
+    // buffer
+    int buffer_index;
+    char buffer[BUFFER_SIZE];
+
+    spinlock_t lock;
 };
 
 enum feserial_state{SERIAL_RESET_COUNTER = 0, SERIAL_GET_COUNTER = 1};
@@ -64,8 +77,27 @@ static ssize_t feserial_write(struct file *file, const char __user *buf, size_t 
 //TODO feserial_read
 static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, loff_t *ppos)
 {
-    return -EINVAL;
+    struct uart_dev *dev;
+    dev = container_of(file->private_data, struct uart_dev, miscdev);
+    
+    // Wait until buffer starts to fill
+    wait_event_interruptible(dev->wait_queue, dev->buffer_index > 0);
+
+    spin_lock(&dev->lock);
+    if (dev->buffer_index == 0){
+        return 0;
+    }
+    if (copy_to_user(buf, dev->buffer, dev->buffer_index)) {
+        return -EFAULT;
+    }
+
+    memset(dev->buffer, 0, BUFFER_SIZE);
+    dev->buffer_index = 0;
+    spin_unlock(&dev->lock);
+
+    return dev->buffer_index;
 }
+
 
 // ioctl function
 
@@ -89,6 +121,25 @@ static long feserial_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 
     return 0;
 }
+
+static irqreturn_t feserial_irq_handler(int irq, void *dev_id) {
+
+    struct uart_dev *dev = dev_id;
+    
+    char recieved_char = reg_read(dev, UART01x_DR);
+   spin_lock(&dev->lock); 
+    if (dev->buffer_index < BUFFER_SIZE) {
+        dev->buffer[dev->buffer_index] = recieved_char;
+        dev->buffer_index++;
+    } else {
+        pr_info("Buffer overflow!\n");
+    }
+    spin_unlock(&dev->lock);
+    wake_up_interruptible(&dev->wait_queue);
+    
+    return IRQ_HANDLED;
+}
+
 static const struct file_operations feserial_fops = {
     .owner = THIS_MODULE,
     .write = feserial_write,
@@ -125,10 +176,36 @@ static int feserial_probe(struct platform_device *pdev)
     };
 
     dev->char_counter = 0;
+    dev->buffer_index = 0;
+
+    // Initialize spinlock
+    spin_lock_init(&dev->lock);
+
+    // Initialize wait_queue
+    init_waitqueue_head(&dev->wait_queue);
 
     // Set power management
     pm_runtime_enable(&pdev->dev);
     pm_runtime_get_sync(&pdev->dev);
+   
+    // Enable interrupts
+    reg_write(dev, UART011_RXIM, UART011_CR);
+    
+    // Get and register interrupts
+    
+    dev->irq = platform_get_irq(pdev, 0);
+    
+    if (dev->irq < 0) {
+        dev_err(&pdev->dev, "Can not register IRQ handler!\n");
+        return -EINVAL;
+    }
+
+    ret = devm_request_irq(&pdev->dev, dev->irq, feserial_irq_handler, 0, dev_name(&pdev->dev), dev);
+    
+    if (ret < 0) {
+        dev_err(&pdev->dev, "Can not register IRQ handler!\n");
+        return ret;
+    }
 
     // Misdevice init
     dev->miscdev.minor = MISC_DYNAMIC_MINOR;
