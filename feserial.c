@@ -27,7 +27,7 @@ struct uart_dev {
     wait_queue_head_t wait_queue;
 
     // buffer
-    int buffer_index;
+    int buffer_lenght;
     char buffer[BUFFER_SIZE];
 
     spinlock_t lock;
@@ -78,24 +78,27 @@ static ssize_t feserial_write(struct file *file, const char __user *buf, size_t 
 static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, loff_t *ppos)
 {
     struct uart_dev *dev;
+    int ret;
     dev = container_of(file->private_data, struct uart_dev, miscdev);
     
     // Wait until buffer starts to fill
-    wait_event_interruptible(dev->wait_queue, dev->buffer_index > 0);
+    ret = wait_event_interruptible(dev->wait_queue, dev->buffer_lenght > 0);
+    
+    if (ret) return ret;
 
     spin_lock(&dev->lock);
-    if (dev->buffer_index == 0){
+    if (dev->buffer_lenght == 0){
         return 0;
     }
-    if (copy_to_user(buf, dev->buffer, dev->buffer_index)) {
+    if (copy_to_user(buf, dev->buffer, dev->buffer_lenght)) {
         return -EFAULT;
     }
 
     memset(dev->buffer, 0, BUFFER_SIZE);
-    dev->buffer_index = 0;
+    dev->buffer_lenght = 0;
     spin_unlock(&dev->lock);
 
-    return dev->buffer_index;
+    return dev->buffer_lenght;
 }
 
 
@@ -128,9 +131,9 @@ static irqreturn_t feserial_irq_handler(int irq, void *dev_id) {
     
     char recieved_char = reg_read(dev, UART01x_DR);
    spin_lock(&dev->lock); 
-    if (dev->buffer_index < BUFFER_SIZE) {
-        dev->buffer[dev->buffer_index] = recieved_char;
-        dev->buffer_index++;
+    if (dev->buffer_lenght < BUFFER_SIZE) {
+        dev->buffer[dev->buffer_lenght] = recieved_char;
+        dev->buffer_lenght++;
     } else {
         pr_info("Buffer overflow!\n");
     }
@@ -190,7 +193,7 @@ static int feserial_probe(struct platform_device *pdev)
     pm_runtime_get_sync(&pdev->dev);
    
     // Enable interrupts
-    reg_write(dev, UART011_RXIM, UART011_CR);
+    reg_write(dev, read(dev, UART011_IMSC) | UART011_RXIS, UART011_IMSC);
     
     // Get and register interrupts
     
