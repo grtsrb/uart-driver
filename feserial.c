@@ -88,6 +88,7 @@ static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, lof
     spin_lock(&dev->lock);    
     // Wait until buffer starts to fill
     ret = wait_event_interruptible(dev->wait_queue, dev->buffer_lenght > 0);
+    pr_info("PROSO\n");
     if (ret) return ret;
 
     if (dev->buffer_lenght == 0){
@@ -97,10 +98,10 @@ static ssize_t feserial_read(struct file *file, char __user *buf, size_t sz, lof
         return -EFAULT;
     }
 
-    spin_unlock(&dev->lock);
     memset(dev->buffer, 0, BUFFER_SIZE);
     dev->buffer_lenght = 0;
 
+    spin_unlock(&dev->lock);
     return dev->buffer_lenght;
 }
 
@@ -137,16 +138,16 @@ static irqreturn_t feserial_irq_handler(int irq, void *dev_id) {
     while ((reg_read(dev, UART01x_FR) & UART01x_FR_RXFE) == 0)
     { 
     char recieved_char = reg_read(dev, UART01x_DR);
-    pr_info("Char: %hhd\n", recieved_char);
     if (dev->buffer_lenght < BUFFER_SIZE) {
         dev->buffer[dev->buffer_lenght] = recieved_char;
         dev->buffer_lenght++;
+	pr_info("%d", dev->buffer_lenght);
+        wake_up(&dev->wait_queue);
     } else {
         pr_info("Buffer overflow!\n");
     }
     }
     spin_unlock(&dev->lock);
-    wake_up_interruptible(&dev->wait_queue);
     
     return IRQ_HANDLED;
 }
@@ -155,6 +156,7 @@ static const struct file_operations feserial_fops = {
     .owner = THIS_MODULE,
     .write = feserial_write,
     .read = feserial_read,
+    .unlocked_ioctl = feserial_ioctl,
 };
 
 static int feserial_probe(struct platform_device *pdev)
@@ -205,8 +207,6 @@ static int feserial_probe(struct platform_device *pdev)
     pm_runtime_enable(&pdev->dev);
     pm_runtime_get_sync(&pdev->dev);
    
-    // Enable interrupts
-    reg_write(dev, reg_read(dev, UART011_IMSC) | UART011_RXIS, UART011_IMSC);
     
     // Get and register interrupts
     
@@ -254,14 +254,18 @@ static int feserial_probe(struct platform_device *pdev)
     // Write fraction value
     reg_write(dev, (baud_divisor & 0x3F), UART011_FBRD);
 
-    // Enable UART011
-    reg_write(dev, reg_read(dev, UART011_CR) | UART01x_CR_UARTEN, UART011_CR);
-
+    // Enable interrupts
+    reg_write(dev, reg_read(dev, UART011_IMSC) | UART011_RXIS, UART011_IMSC);
+   
     // Enable RX
     reg_write(dev, reg_read(dev, UART011_CR) | UART011_CR_RXE, UART011_CR);
 
     // Enable TX
     reg_write(dev, reg_read(dev, UART011_CR) | UART011_CR_TXE, UART011_CR);
+    
+    // Enable UART011
+    reg_write(dev, reg_read(dev, UART011_CR) | UART01x_CR_UARTEN, UART011_CR);
+
     
     // Misdevice init
     dev->miscdev.minor = MISC_DYNAMIC_MINOR;
