@@ -7,6 +7,7 @@
 #include <linux/resource.h>
 #include <linux/pm_runtime.h>
 #include <asm/io.h>
+#include <linux/clk.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
 // Offset values defined in -> bus.h and serial.h
@@ -16,6 +17,9 @@
 #include <linux/spinlock.h>
 
 #define BUFFER_SIZE 128
+
+
+#define BAUDRATE 115200
 
 // Driver structure
 struct uart_dev {
@@ -53,7 +57,7 @@ static void feserial_write_one_char(struct uart_dev *dev, char c){
     dev->char_counter++;
 }
 
-//TODO feserial_write
+// feserial_write
 static ssize_t feserial_write(struct file *file, const char __user *buf, size_t sz, loff_t *ppos)
 {
     struct uart_dev *dev;
@@ -158,6 +162,9 @@ static int feserial_probe(struct platform_device *pdev)
 	pr_info("Called feserial_probe\n");
     struct uart_dev *dev;
     struct resource *res;
+    struct clk *uart_clk;
+    unsigned long baud_divisor;
+    unsigned long uartfreq;
     int ret;
 
     // Allocate memory
@@ -176,10 +183,12 @@ static int feserial_probe(struct platform_device *pdev)
     
     // Print base address
     dev_info(&pdev->dev, "Base address: %X", res->start);
+
     // Remap resources 
     dev->regs = devm_ioremap_resource(&pdev->dev, res);
     if (!dev->regs) {
         dev_err(&pdev->dev, "Can not remap registers!\n");
+        return -ENOMEM;
     };
 
     dev->char_counter = 0;
@@ -215,6 +224,45 @@ static int feserial_probe(struct platform_device *pdev)
         return ret;
     }
 
+    // Get frequency from device tree
+    uart_clk = devm_clk_get(&pdev->dev, NULL);
+
+    if (!uart_clk) {
+        dev_err(&pdev->dev, "Could not get uart0 clock.\n");
+        return -EBUSY;
+    }
+
+    ret = clk_prepare_enable(uart_clk);
+    if (ret) {
+        dev_err(&pdev->dev, "Unable to enable uart0 clock!\n");
+        return ret;
+    }
+    // Get frequency
+    uartfreq = clk_get_rate(uart_clk);
+    
+    // Check if bit is set, if set turn it off.
+    if (reg_read(dev, UART011_CR) & UART01x_CR_UARTEN) {
+        reg_write(dev, reg_read(dev, UART011_CR) & (~UART01x_CR_UARTEN), UART011_CR);
+    }
+    // Calculate baud_divisor
+
+    baud_divisor = uartfreq / (16 * BAUDRATE);
+
+    // Write integer value
+    reg_write(dev, (baud_divisor >> 6), UART011_IBRD);
+
+    // Write fraction value
+    reg_write(dev, (baud_divisor & 0x3F), UART011_FBRD);
+
+    // Enable UART011
+    reg_write(dev, reg_read(dev, UART011_CR) | UART01x_CR_UARTEN, UART011_CR);
+
+    // Enable RX
+    reg_write(dev, reg_read(dev, UART011_CR) | UART011_CR_RXE, UART011_CR);
+
+    // Enable TX
+    reg_write(dev, reg_read(dev, UART011_CR) | UART011_CR_TXE, UART011_CR);
+    
     // Misdevice init
     dev->miscdev.minor = MISC_DYNAMIC_MINOR;
     dev->miscdev.name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "feserial-%x", res->start);
@@ -231,7 +279,6 @@ static int feserial_probe(struct platform_device *pdev)
         pm_runtime_disable(&pdev->dev);
         return ret;
     }
-
 	return 0;
 }
 

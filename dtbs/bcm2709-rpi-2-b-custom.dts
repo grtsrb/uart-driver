@@ -25,4 +25,3 @@
 	pinctrl-0 = <&uart0_pins>;
 	pinctrl-names = "default";
 };
-
